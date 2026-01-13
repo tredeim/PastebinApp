@@ -1,0 +1,130 @@
+﻿services:
+  # ASP.NET Core API
+  api:
+    build:
+      context: .
+      dockerfile: src/PastebinApp.Api/Dockerfile
+    container_name: pastebin_api
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: "http://+:8080"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=pastebindb;Username=pastebin_user;Password=pastebin_password_dev"
+      ConnectionStrings__Redis: "redis:6379,abortConnect=false"
+    networks:
+      - pastebin_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: pastebin_postgres
+    environment:
+      POSTGRES_DB: pastebindb
+      POSTGRES_USER: pastebin_user
+      POSTGRES_PASSWORD: pastebin_password_dev
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pastebin_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pastebin_user -d pastebindb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: pastebin_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pastebin_network
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # MinIO (S3-compatible storage для content)
+  minio:
+    image: minio/minio:latest
+    container_name: pastebin_minio
+    ports:
+      - "9000:9000"      # API
+      - "9001:9001"      # Console UI
+    volumes:
+      - minio_data:/data
+    networks:
+      - pastebin_network
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # pgAdmin (опционально, для удобства работы с БД)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pastebin_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - pastebin_network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # Redis Commander (опционально, для визуализации Redis)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: pastebin_redis_commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - pastebin_network
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  pastebin_network:
+    driver: bridge

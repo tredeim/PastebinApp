@@ -1,0 +1,49 @@
+﻿# Исключаем из Docker context для ускорения сборки
+
+# Build artifacts
+**/bin/
+**/obj/
+**/out/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docker
+**/Dockerfile*
+**/docker-compose*
+**/.dockerignore
+
+# Tests
+**/tests/
+**/*Tests/
+
+# Documentation
+README.md
+LICENSE
+*.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Logs
+**/logs/
+**/*.log
+
+# Secrets
+**/*.Development.json
+**/*.Local.json
+**/secrets.json
+
+# OS
+.DS_Store
+Thumbs.db
