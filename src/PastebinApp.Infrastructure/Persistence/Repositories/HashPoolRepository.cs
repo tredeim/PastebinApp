@@ -25,7 +25,7 @@ public class HashPoolRepository : IHashPoolRepository
             hashes.Add(hash);
         }
 
-        await _context.PreGeneratedHashes.AddRangeAsync(hashes, cancellationToken);
+        await _context.PasteHashes.AddRangeAsync(hashes, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
         return hashes;
@@ -33,14 +33,14 @@ public class HashPoolRepository : IHashPoolRepository
 
     public async Task<PasteHash?> GetUnusedHashAsync(string hash, CancellationToken cancellationToken = default)
     {
-        return await _context.PreGeneratedHashes
+        return await _context.PasteHashes
             .Where(h => h.Hash == hash && !h.IsUsed)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task MarkAsUsedAsync(long id, CancellationToken cancellationToken = default)
     {
-        await _context.PreGeneratedHashes
+        await _context.PasteHashes
             .Where(h => h.Id == id)
             .ExecuteUpdateAsync(
                 setters => setters
@@ -51,7 +51,7 @@ public class HashPoolRepository : IHashPoolRepository
 
     public async Task<int> GetUnusedCountAsync(CancellationToken cancellationToken = default)
     {
-        return await _context.PreGeneratedHashes
+        return await _context.PasteHashes
             .Where(h => !h.IsUsed)
             .CountAsync(cancellationToken);
     }
