@@ -12,16 +12,19 @@ public class ApplicationDbContext : DbContext
     }
 
     public DbSet<Paste> Pastes => Set<Paste>();
+    public DbSet<PasteHash> PreGeneratedHashes => Set<PasteHash>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.ApplyConfiguration(new PasteConfiguration());
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+
+        // SeedData(modelBuilder);
     }
 
     private void SeedData(ModelBuilder modelBuilder)
     {
-        
+        // modelBuilder.Entity<Paste>().HasData(...);
     }
 }

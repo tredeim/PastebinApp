@@ -2,7 +2,6 @@ using PastebinApp.Application.DTOs;
 using PastebinApp.Application.Interfaces;
 using PastebinApp.Domain.Entities;
 using PastebinApp.Domain.Exceptions;
-using PastebinApp.Domain.Services;
 using Microsoft.Extensions.Logging;
 
 namespace PastebinApp.Application.Services;
@@ -12,20 +11,20 @@ public class PasteService : IPasteService
     private readonly IPasteRepository _repository;
     private readonly ICacheService _cache;
     private readonly IBlobStorageService _blobStorage;
-    private readonly PasteHashGenerator _hashGenerator;
+    private readonly IHashPoolService _hashPool;
     private readonly ILogger<PasteService> _logger;
 
     public PasteService(
         IPasteRepository repository,
         ICacheService cache,
         IBlobStorageService blobStorage,
-        PasteHashGenerator hashGenerator,
+        IHashPoolService hashPool,
         ILogger<PasteService> logger)
     {
         _repository = repository;
         _cache = cache;
         _blobStorage = blobStorage;
-        _hashGenerator = hashGenerator;
+        _hashPool = hashPool;
         _logger = logger;
     }
 
@@ -36,28 +35,16 @@ public class PasteService : IPasteService
     {
         _logger.LogInformation("Creating new paste with expiration: {Hours}h", dto.ExpirationHours);
 
-        var hash = _hashGenerator.Generate();
+        var hash = await _hashPool.AcquireHashAsync(cancellationToken);
 
-        var attempts = 0;
-        while (await _repository.ExistsAsync(hash.Value, cancellationToken) && attempts < 5)
-        {
-            hash = _hashGenerator.Generate();
-            attempts++;
-            _logger.LogWarning("Hash collision detected, regenerating. Attempt: {Attempt}", attempts);
-        }
+        _logger.LogDebug("Acquired hash from pool: {Hash}", hash);
 
-        if (attempts >= 5)
-        {
-            _logger.LogError("Failed to generate unique hash after 5 attempts");
-            throw new InvalidOperationException("Failed to generate unique hash");
-        }
-
-        await _blobStorage.UploadContentAsync(hash.Value, dto.Content, cancellationToken);
-        var contentSize = await _blobStorage.GetContentSizeAsync(hash.Value, cancellationToken);
+        await _blobStorage.UploadContentAsync(hash, dto.Content, cancellationToken);
+        var contentSize = await _blobStorage.GetContentSizeAsync(hash, cancellationToken);
 
         var expiresIn = TimeSpan.FromHours(dto.ExpirationHours);
         var paste = Paste.Create(
-            hash: hash.Value,
+            hash: hash,
             contentSizeBytes: contentSize,
             expiresIn: expiresIn,
             language: dto.Language,
@@ -86,9 +73,9 @@ public class PasteService : IPasteService
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Getting paste by hash: {Hash}", hash);
-
+        
         var paste = await _cache.GetPasteAsync(hash, cancellationToken);
-
+        
         if (paste == null)
         {
             _logger.LogDebug("Cache miss for hash: {Hash}, fetching from database", hash);
@@ -100,7 +87,7 @@ public class PasteService : IPasteService
                 _logger.LogWarning("Paste not found: {Hash}", hash);
                 throw new PasteNotFoundException(hash);
             }
-
+            
             await _cache.SetPasteAsync(paste, cancellationToken);
         }
         else
@@ -117,11 +104,11 @@ public class PasteService : IPasteService
             
             throw new PasteExpiredException(hash, paste.ExpiresAt);
         }
-        
+
         paste.IncrementViewCount();
         await _repository.UpdateAsync(paste, cancellationToken);
         await _cache.IncrementViewCountAsync(hash, cancellationToken);
-        
+
         var content = await _blobStorage.GetContentAsync(hash, cancellationToken);
 
         _logger.LogInformation("Paste retrieved successfully: {Hash}, ViewCount: {ViewCount}", 
@@ -155,7 +142,7 @@ public class PasteService : IPasteService
             _logger.LogWarning("Paste not found for deletion: {Hash}", hash);
             return false;
         }
-
+        
         await _repository.DeleteAsync(paste, cancellationToken);
         await _cache.RemovePasteAsync(hash, cancellationToken);
         await _blobStorage.DeleteContentAsync(hash, cancellationToken);

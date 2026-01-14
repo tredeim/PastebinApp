@@ -7,6 +7,7 @@ using PastebinApp.Infrastructure.Caching;
 using PastebinApp.Infrastructure.Persistence;
 using PastebinApp.Infrastructure.Persistence.Repositories;
 using PastebinApp.Infrastructure.Storage;
+using StackExchange.Redis;
 
 namespace PastebinApp.Infrastructure.Extensions;
 
@@ -28,6 +29,7 @@ public static class ServiceCollectionExtensions
                     errorCodesToAdd: null);
             });
 
+            // Для development
             if (configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development")
             {
                 options.EnableSensitiveDataLogging();
@@ -41,6 +43,11 @@ public static class ServiceCollectionExtensions
         {
             options.Configuration = redisConnection;
             options.InstanceName = "PastebinApp:";
+        });
+
+        services.AddSingleton<IConnectionMultiplexer>(sp =>
+        {
+            return ConnectionMultiplexer.Connect(redisConnection!);
         });
 
         // MinIO (S3-compatible storage)
