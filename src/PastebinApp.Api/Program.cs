@@ -1,7 +1,6 @@
 using FluentValidation;
 using PastebinApp.Application.Interfaces;
 using PastebinApp.Application.Services;
-using PastebinApp.Domain.Services;
 using PastebinApp.Infrastructure.Extensions;
 using PastebinApp.Application.Validators;
 
@@ -12,7 +11,6 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<IPasteService, PasteService>();
-builder.Services.AddSingleton<PasteHashGenerator>();
 builder.Services.AddValidatorsFromAssemblyContaining<CreatePasteDtoValidator>();
 
 builder.Services.AddCors(options =>

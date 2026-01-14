@@ -83,7 +83,7 @@
       retries: 5
     restart: unless-stopped
 
-  # pgAdmin (опционально, для удобства работы с БД)
+  # pgAdmin
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pastebin_pgadmin
@@ -101,7 +101,7 @@
       - postgres
     restart: unless-stopped
 
-  # Redis Commander (опционально, для визуализации Redis)
+  # Redis Commander
   redis-commander:
     image: rediscommander/redis-commander:latest
     container_name: pastebin_redis_commander
