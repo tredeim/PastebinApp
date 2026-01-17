@@ -14,6 +14,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<IPasteService, PasteService>();
 builder.Services.AddValidatorsFromAssemblyContaining<CreatePasteDtoValidator>();
 builder.Services.AddHostedService<HashPoolRefillBackgroundService>();
+builder.Services.AddHostedService<ExpiredPastesCleanupBackgroundService>();
 
 builder.Services.AddCors(options =>
 {
