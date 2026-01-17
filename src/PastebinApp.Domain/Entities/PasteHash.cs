@@ -4,9 +4,7 @@ public class PasteHash
 {
     public long Id { get; private set; }
     public string Hash { get; private set; }
-    public bool IsUsed { get; private set; }
     public DateTime CreatedAt { get; private set; }
-    public DateTime? UsedAt { get; private set; }
 
     private PasteHash()
     {
@@ -21,15 +19,8 @@ public class PasteHash
         {
             Id = id,
             Hash = hash,
-            IsUsed = false,
             CreatedAt = DateTime.UtcNow
         };
-    }
-
-    public void MarkAsUsed()
-    {
-        IsUsed = true;
-        UsedAt = DateTime.UtcNow;
     }
 
     private static string ConvertToBase62(long value)

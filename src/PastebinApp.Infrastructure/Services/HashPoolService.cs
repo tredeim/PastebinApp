@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PastebinApp.Application.Interfaces;
 using StackExchange.Redis;
@@ -47,16 +45,6 @@ public class HashPoolService : IHashPoolService
         }
 
         var hashValue = hash.ToString();
-        
-        var preGeneratedHash = await _repository.GetUnusedHashAsync(hashValue, cancellationToken);
-        if (preGeneratedHash != null)
-        {
-            await _repository.MarkAsUsedAsync(preGeneratedHash.Id, cancellationToken);
-        }
-        else
-        {
-            _logger.LogWarning("Hash {Hash} not found in database, may be race condition", hashValue);
-        }
 
         var currentSize = await db.ListLengthAsync(HashPoolKey);
         if (currentSize < MinPoolSize)
@@ -85,7 +73,7 @@ public class HashPoolService : IHashPoolService
     }
 
     public async Task RefillPoolAsync(CancellationToken cancellationToken = default)
-    {
+    {   
         if (!await _refillLock.WaitAsync(0, cancellationToken))
         {
             _logger.LogDebug("Refill already in progress, skipping");
@@ -101,12 +89,12 @@ public class HashPoolService : IHashPoolService
                 _logger.LogDebug("Pool has enough hashes ({Count}), skipping refill", currentCount);
                 return;
             }
-
+            
             var needCount = RefillBatchSize - currentCount;
             _logger.LogInformation("Refilling hash pool: generating {Count} new hashes", needCount);
-
+            
             var newHashes = await _repository.GenerateBatchAsync(needCount, cancellationToken);
-
+            
             var db = _redis.GetDatabase();
             var hashValues = newHashes.Select(h => (RedisValue)h.Hash).ToArray();
             await db.ListRightPushAsync(HashPoolKey, hashValues);
