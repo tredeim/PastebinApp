@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Minio;
 using PastebinApp.Application.Interfaces;
 using PastebinApp.Infrastructure.Caching;
@@ -39,15 +40,26 @@ public static class ServiceCollectionExtensions
 
         // Redis
         var redisConnection = configuration.GetConnectionString("Redis");
-        services.AddStackExchangeRedisCache(options =>
-        {
-            options.Configuration = redisConnection;
-            options.InstanceName = "PastebinApp:";
-        });
-
+        
         services.AddSingleton<IConnectionMultiplexer>(sp =>
         {
             return ConnectionMultiplexer.Connect(redisConnection!);
+        });
+        
+        services.AddStackExchangeRedisCache(options =>
+        {
+            options.InstanceName = "PastebinApp:";
+        });
+        
+        services.AddSingleton<IConfigureOptions<Microsoft.Extensions.Caching.StackExchangeRedis.RedisCacheOptions>>(sp =>
+        {
+            var connectionMultiplexer = sp.GetRequiredService<IConnectionMultiplexer>();
+            return new ConfigureNamedOptions<Microsoft.Extensions.Caching.StackExchangeRedis.RedisCacheOptions>(
+                Options.DefaultName,
+                options =>
+                {
+                    options.ConnectionMultiplexerFactory = () => Task.FromResult(connectionMultiplexer);
+                });
         });
 
         // MinIO (S3-compatible storage)

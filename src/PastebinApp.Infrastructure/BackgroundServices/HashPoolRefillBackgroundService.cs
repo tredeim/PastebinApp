@@ -43,7 +43,7 @@ public class HashPoolRefillBackgroundService : BackgroundService
             try
             {
                 await Task.Delay(TimeSpan.FromSeconds(CheckIntervalSeconds), stoppingToken);
-
+        
                 using var checkScope = _serviceProvider.CreateScope();
                 var poolService = checkScope.ServiceProvider.GetRequiredService<IHashPoolService>();
                 

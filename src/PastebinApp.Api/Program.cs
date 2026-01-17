@@ -3,6 +3,7 @@ using PastebinApp.Application.Interfaces;
 using PastebinApp.Application.Services;
 using PastebinApp.Infrastructure.Extensions;
 using PastebinApp.Application.Validators;
+using PastebinApp.Infrastructure.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<IPasteService, PasteService>();
 builder.Services.AddValidatorsFromAssemblyContaining<CreatePasteDtoValidator>();
+builder.Services.AddHostedService<HashPoolRefillBackgroundService>();
+builder.Services.AddHostedService<ExpiredPastesCleanupBackgroundService>();
 
 builder.Services.AddCors(options =>
 {
