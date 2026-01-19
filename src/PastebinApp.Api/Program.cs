@@ -4,6 +4,7 @@ using PastebinApp.Application.Services;
 using PastebinApp.Infrastructure.Extensions;
 using PastebinApp.Application.Validators;
 using PastebinApp.Infrastructure.BackgroundServices;
+using PastebinApp.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +34,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseCors();
 

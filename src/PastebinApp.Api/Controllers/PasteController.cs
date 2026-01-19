@@ -5,7 +5,6 @@ using PastebinApp.Api.Models.Requests;
 using PastebinApp.Api.Models.Responses;
 using PastebinApp.Application.DTOs;
 using PastebinApp.Application.Interfaces;
-using PastebinApp.Domain.Exceptions;
 
 namespace PastebinApp.Api.Controllers;
 
@@ -53,30 +52,16 @@ public class PasteController : ControllerBase
             });
         }
 
-        try
-        {
-            var baseUrl = $"{Request.Scheme}://{Request.Host}";
-            
-            var serviceResult = await _pasteService.CreatePasteAsync(dto, baseUrl, cancellationToken);
-            
-            var response = serviceResult.ToResponse();
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var serviceResult = await _pasteService.CreatePasteAsync(dto, baseUrl, cancellationToken);
+        var response = serviceResult.ToResponse();
 
-            _logger.LogInformation("Paste created successfully: {Hash}", response.Hash);
-            
-            return CreatedAtAction(
-                nameof(GetPaste),
-                new { hash = response.Hash },
-                response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating paste");
-            return StatusCode(500, new ErrorResponse
-            {
-                Error = "Failed to create paste",
-                Details = ex.Message
-            });
-        }
+        _logger.LogInformation("Paste created successfully: {Hash}", response.Hash);
+
+        return CreatedAtAction(
+            nameof(GetPaste),
+            new { hash = response.Hash },
+            response);
     }
     
     [HttpGet("{hash}")]
@@ -88,44 +73,9 @@ public class PasteController : ControllerBase
         string hash,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var serviceResult = await _pasteService.GetPasteAsync(hash, cancellationToken);
-            
-            var response = serviceResult.ToResponse();
-
-            return Ok(response);
-        }
-        catch (PasteNotFoundException ex)
-        {
-            _logger.LogWarning("Paste not found: {Hash}", hash);
-            return NotFound(new ErrorResponse
-            {
-                Error = ex.Message
-            });
-        }
-        catch (PasteExpiredException ex)
-        {
-            _logger.LogInformation("Paste expired: {Hash}", hash);
-            return StatusCode(410, new ErrorResponse
-            {
-                Error = "Paste has expired",
-                Details = new
-                {
-                    hash = ex.Hash,
-                    expiredAt = ex.ExpiredAt
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting paste: {Hash}", hash);
-            return StatusCode(500, new ErrorResponse
-            {
-                Error = "Failed to get paste",
-                Details = ex.Message
-            });
-        }
+        var serviceResult = await _pasteService.GetPasteAsync(hash, cancellationToken);
+        var response = serviceResult.ToResponse();
+        return Ok(response);
     }
     
     [HttpDelete("{hash}")]
@@ -136,29 +86,17 @@ public class PasteController : ControllerBase
         string hash,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var deleted = await _pasteService.DeletePasteAsync(hash, cancellationToken);
+        var deleted = await _pasteService.DeletePasteAsync(hash, cancellationToken);
 
-            if (!deleted)
-            {
-                return NotFound(new ErrorResponse
-                {
-                    Error = $"Paste '{hash}' not found"
-                });
-            }
-
-            _logger.LogInformation("Paste deleted: {Hash}", hash);
-            return NoContent();
-        }
-        catch (Exception ex)
+        if (!deleted)
         {
-            _logger.LogError(ex, "Error deleting paste: {Hash}", hash);
-            return StatusCode(500, new ErrorResponse
+            return NotFound(new ErrorResponse
             {
-                Error = "Failed to delete paste",
-                Details = ex.Message
+                Error = $"Paste '{hash}' not found"
             });
         }
+
+        _logger.LogInformation("Paste deleted: {Hash}", hash);
+        return NoContent();
     }
 }
