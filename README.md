@@ -133,7 +133,3 @@ dotnet test
 ```
 
 ---
-
-## License
-
-MIT (or your preferred license).
