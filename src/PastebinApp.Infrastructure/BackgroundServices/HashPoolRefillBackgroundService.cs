@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,14 +10,19 @@ public class HashPoolRefillBackgroundService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<HashPoolRefillBackgroundService> _logger;
-    private const int CheckIntervalSeconds = 30;
+    private readonly int _checkIntervalSeconds;
+    private readonly int _minPoolSize;
 
     public HashPoolRefillBackgroundService(
         IServiceProvider serviceProvider,
-        ILogger<HashPoolRefillBackgroundService> logger)
+        ILogger<HashPoolRefillBackgroundService> logger,
+        IConfiguration configuration)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
+        
+        _checkIntervalSeconds = configuration.GetValue<int>("HashPool:CheckIntervalSeconds", 30);
+        _minPoolSize = configuration.GetValue<int>("HashPool:MinPoolSize", 500);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -42,7 +48,7 @@ public class HashPoolRefillBackgroundService : BackgroundService
         {
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(CheckIntervalSeconds), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(_checkIntervalSeconds), stoppingToken);
         
                 using var checkScope = _serviceProvider.CreateScope();
                 var poolService = checkScope.ServiceProvider.GetRequiredService<IHashPoolService>();
@@ -50,7 +56,7 @@ public class HashPoolRefillBackgroundService : BackgroundService
                 var availableCount = await poolService.GetAvailableCountAsync(stoppingToken);
                 _logger.LogDebug("Hash pool check: {Count} hashes available", availableCount);
 
-                if (availableCount < 500)
+                if (availableCount < _minPoolSize)
                 {
                     _logger.LogInformation("Hash pool low ({Count}), triggering refill", availableCount);
                     await poolService.RefillPoolAsync(stoppingToken);

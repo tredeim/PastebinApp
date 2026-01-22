@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PastebinApp.Application.Interfaces;
 using PastebinApp.Domain.Entities;
@@ -10,15 +11,22 @@ public class RedisCacheService : ICacheService
 {
     private readonly IDistributedCache _cache;
     private readonly ILogger<RedisCacheService> _logger;
-    private const string CacheKeyPrefix = "paste:";
-    private const string ViewCountPrefix = "views:";
+    private readonly string _cacheKeyPrefix;
+    private readonly string _viewCountPrefix;
+    private readonly TimeSpan _viewCountSlidingExpiration;
 
     public RedisCacheService(
         IDistributedCache cache,
-        ILogger<RedisCacheService> logger)
+        ILogger<RedisCacheService> logger,
+        IConfiguration configuration)
     {
         _cache = cache;
         _logger = logger;
+        
+        _cacheKeyPrefix = configuration["Cache:KeyPrefix"] ?? "paste:";
+        _viewCountPrefix = configuration["Cache:ViewCountPrefix"] ?? "views:";
+        var viewCountExpirationHours = configuration.GetValue<int>("Cache:ViewCountSlidingExpirationHours", 1);
+        _viewCountSlidingExpiration = TimeSpan.FromHours(viewCountExpirationHours);
     }
 
     public async Task<Paste?> GetPasteAsync(string hash, CancellationToken cancellationToken = default)
@@ -114,7 +122,7 @@ public class RedisCacheService : ICacheService
                 newValue.ToString(), 
                 new DistributedCacheEntryOptions 
                 { 
-                    SlidingExpiration = TimeSpan.FromHours(1) 
+                    SlidingExpiration = _viewCountSlidingExpiration
                 },
                 cancellationToken);
 
@@ -141,6 +149,6 @@ public class RedisCacheService : ICacheService
         }
     }
 
-    private static string GetCacheKey(string hash) => $"{CacheKeyPrefix}{hash}";
-    private static string GetViewCountKey(string hash) => $"{ViewCountPrefix}{hash}";
+    private string GetCacheKey(string hash) => $"{_cacheKeyPrefix}{hash}";
+    private string GetViewCountKey(string hash) => $"{_viewCountPrefix}{hash}";
 }

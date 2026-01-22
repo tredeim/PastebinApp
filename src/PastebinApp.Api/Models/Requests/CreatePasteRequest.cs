@@ -8,7 +8,7 @@ public class CreatePasteRequest
     [StringLength(524288, MinimumLength = 1, ErrorMessage = "Content must be between 1 and 524288 characters (512 KB)")]
     public string Content { get; set; } = string.Empty;
     
-    [Range(1, 720, ErrorMessage = "Expiration hours must be between 1 and 720 (30 days)")]
+    [Range(1, int.MaxValue, ErrorMessage = "Expiration hours must be greater than or equal to 1")]
     public int ExpirationHours { get; set; } = 24;
     
     [StringLength(50, ErrorMessage = "Language cannot exceed 50 characters")]

@@ -79,6 +79,10 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IPasteRepository, PasteRepository>();
 
+        services.AddScoped<IHashPoolRepository, HashPoolRepository>();
+
+        services.AddScoped<IHashPoolService, Services.HashPoolService>();
+
         services.AddScoped<ICacheService, RedisCacheService>();
 
         services.AddScoped<IBlobStorageService, MinIoBlobStorageService>();
